@@ -1,8 +1,5 @@
-import os
-
 from tqdm import tqdm
 import torch
-from transformers import BertTokenizer
 
 
 class InputExample(object):
@@ -11,18 +8,6 @@ class InputExample(object):
         self.tokens = tokens  # token di nltk
         self.poss = poss
         self.labels = labels
-
-
-class InputFeature(object):
-    def __init__(self, token_ids, pos_ids, label_ids, attention, segment_ids):
-        self.token_ids = token_ids
-        self.attention = attention
-        self.segment_ids = segment_ids
-        self.pos_ids = pos_ids
-        # self.chunk_ids = chunk_ids
-        # self.char_ids = char_ids
-        self.label_ids = label_ids
-        # self.word2token_idx = word2token_idx
 
 
 def pos2ix(train_ex):
@@ -51,18 +36,15 @@ def read_examples_data(file: str, tokenizer):
                 # for the last entry if it doesn't match the (line == "") condition
                 tokens = []
                 pos_seq = []
-                # chunkseq = []
                 label_seq = []
                 for entry in bucket:
-                    token = entry[0]  # first column from CoNLL2003 dataset (Token)
-                    pos = entry[1]  # second column from CoNLL2003 dataset (POS)
-                    # chunk = entry[2]  # third column from CoNLL2003 dataset (Chunk)
-                    label = entry[3]  # last column from CoNLL2003 dataset (Label)
+                    token = entry[0]
+                    pos = entry[1]
+                    label = entry[3]
 
                     tokens.append(token)
                     t_w = tokenizer.tokenize(token)
                     if len(t_w) > 1:  # if word is split we have to align the number of labels and pos tags
-                        # tokens.extend(t_w)
                         for i in range(len(t_w)):
                             pos_seq.append(pos)
                             if i != 0:
@@ -82,7 +64,6 @@ def read_examples_data(file: str, tokenizer):
                 examples.append(InputExample(sent=sent,
                                              tokens=tokens,
                                              poss=pos_seq,
-                                             # chunks=chunkseq,
                                              labels=label_seq))
 
                 bucket = []
