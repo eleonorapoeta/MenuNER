@@ -1,6 +1,7 @@
 import os
 
 from tqdm import tqdm
+import torch
 from transformers import BertTokenizer
 
 
@@ -13,19 +14,19 @@ class InputExample(object):
 
 
 class InputFeature(object):
-    def __int__(self, input_ids, pos_ids, char_ids, label_ids, word2token_idx):
-        self.input_ids = input_ids
-        # self.input_mask = input_mask
-        # self.segment_ids = segment_ids
+    def __init__(self, token_ids, pos_ids, label_ids, attention, segment_ids):
+        self.token_ids = token_ids
+        self.attention = attention
+        self.segment_ids = segment_ids
         self.pos_ids = pos_ids
         # self.chunk_ids = chunk_ids
-        self.char_ids = char_ids
+        # self.char_ids = char_ids
         self.label_ids = label_ids
-        self.word2token_idx = word2token_idx
+        # self.word2token_idx = word2token_idx
 
 
 def pos2ix(train_ex):
-    p_dict = {}
+    p_dict = {'PAD': 0}
     for ex in train_ex:
         for w in ex.poss:
             if w not in p_dict:
@@ -90,27 +91,48 @@ def read_examples_data(file: str, tokenizer):
                 assert (len(entry) == 4)
                 bucket.append(entry)
 
+    examples.pop(0)  # Removal of the first since it is empty
     return examples
 
 
-def convert_single_example_to_feature(self, example, tokenizer, tag_to_idx, pos_to_idx):
+def convert_single_example_to_feature(example, tokenizer, tag_to_idx, pos_to_idx):
+    max_length = 512
     label_ids = [tag_to_idx[l] for l in example.labels]
     poss_ids = [pos_to_idx[p] for p in example.poss]
 
     token_ids = []
     tokens = []
     # Word extension
-    for w in example.words:
+    for w in example.tokens:
         t = tokenizer.tokenize(w)
         tokens.extend(t)
         token_ids.extend(tokenizer.convert_tokens_to_ids(t))
-    attention = [1 for i in range(len(token_ids))]
-    segment = [0 for i in range(len(token_ids))]
+    attention = [1 for i in range(len(token_ids) + 1)]  # +1 because we are counting also [CLS] token
+    segment = [0 for i in range(len(token_ids) + 1)]
+
+    # ADD CLS
+    token_ids.insert(0, 101)  # [CLS] = 101
+    label_ids.insert(0, tag_to_idx['PAD'])  # Padding because there is no correspondence between [CLS] and labels
+    poss_ids.insert(0, pos_to_idx['PAD'])  # Padding because there is no correspondence between [CLS] and poss
+
+    # ADD SEP
+    token_ids.append(102)  # [SEP] = 102
+
+    # ADD PAD - padding to max_length for batching
+
+    token_ids.extend([0 for i in range(max_length - len(token_ids))])
+    label_ids.extend([tag_to_idx['PAD'] for i in range(max_length - len(label_ids))])
+    poss_ids.extend([pos_to_idx['PAD'] for i in range(max_length - len(poss_ids))])
+    attention.extend([0 for i in range(max_length - len(attention))])
+    segment.extend([1 for i in range(max_length - len(segment))])
+
+    feature = torch.tensor([token_ids, poss_ids, attention, segment])
+    return feature, torch.tensor(label_ids)
 
 
-def convert_examples_to_feature(self, examples, tokenizer):
+def convert_examples_to_feature(examples, tokenizer):
     features = []
-
+    labels = []
     tag_to_idx = {"PAD": 0, "B-MENU": 1, "I-MENU": 2, "O": 3, "STOP_TAG": 4}
     pos_to_idx = pos2ix(examples)
     for (ex_index, example) in enumerate(tqdm(examples)):
@@ -119,8 +141,8 @@ def convert_examples_to_feature(self, examples, tokenizer):
             logger.info("Writing example %d of %d", ex_index, len(examples))
         '''
 
-        feature = convert_single_example_to_feature(example, tokenizer, tag_to_idx, pos_to_idx)
+        feature, label = convert_single_example_to_feature(example, tokenizer, tag_to_idx, pos_to_idx)
+        features.append(feature)
+        labels.append(label)
 
-    features.append(feature)
-
-    return features
+    return features, labels
