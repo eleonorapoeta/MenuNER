@@ -7,6 +7,12 @@ from torchcrf import CRF
 class Embedders(nn.Module):
     def __init__(self, bert_path, pos2ix=None, pos_dim=2, char=False, pos=False):  # pos_dim scelta arbitrariamente
         # per test, non sappiamo quale sia da usare
+        params = {
+            'char_voc_size': 262,
+            'char_embedding_dim': 25,
+            'num_filter': 30,
+            'kernels': [3, 9]
+        }
         super(Embedders, self).__init__()
         print("ciao")
         print(len(pos2ix))
@@ -17,14 +23,27 @@ class Embedders(nn.Module):
             self.pos2ix = pos2ix
             self.pos_embedder = nn.Embedding(len(pos2ix) + 1, pos_dim, padding_idx=0)
 
-        self.char = char
+        self.bert = bert_model = BertForPreTraining.from_pretrained(bert_path)
+        self.char_embedder = self.CharCNN(in_channels=params['char_embedding_dim'],
+                                          out_channels=params['num_filter'], kernel_sizes=params['kernels'])
 
-        self.bert = bert_model = BertForPreTraining.from_pretrained('../model_checkpoint/bert')
+    def char_cnn(self, x):
+        #
+        # char_emb = nn.Embedding(num_embeddings=params['char_voc_size'],
+        #                         embedding_dim=params['char_embedding_dim'],
+        #                         padding_idx=0)
+
+        out = self.char_embedder(x)
+        print(out.size())
+
+        charcnn_out = out.view(-1, 180, out.shape[-1])
+        # charcnn_out : [batch_size, seq_size, last_dim]
+        return charcnn_out
 
     def bert_emb(self, x):
         params = {
-            'input_ids': x[:, 0, :],
-            'attention_mask': x[:, 2, :],
+            'input_ids': x[0],
+            'attention_mask': x[1],
             'output_hidden_states': True,
             'output_attentions': True,
             'return_dict': True
@@ -40,26 +59,59 @@ class Embedders(nn.Module):
 
     def forward(self, x, p=None):
 
-        x_p = x[:, 1, :]
-        x = self.bert_emb(x)
+        x_p = x[3]
+        x_b = self.bert_emb(x)
+        x_c = x[4]
+
         if self.pos:
             x_p = self.pos_embedder(x_p)
-            x = torch.cat([x, x_p], dim=-1)
+            out = torch.cat([x_b, x_p], dim=-1)
+        else:
+            out = x_b
 
-        return x
+        if self.char:
+            x_c = self.char_cnn(x_c)
+            out = torch.cat([out, x_c], dim=-1)
+
+        return out
+
+
+class CharCNN(nn.Module):
+
+    def __init__(self, in_channels, out_channels, kernel_sizes):
+        super().__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.kernel_sizes = kernel_sizes
+
+        self.conv1 = nn.Conv1d(in_channels=self.in_channels, out_channels=self.out_channels,
+                               kernel_size=self.kernel_sizes[0])
+        self.conv2 = nn.Conv1d(in_channels=self.in_channels, out_channels=self.out_channels,
+                               kernel_size=self.kernel_sizes[1])
+
+    def forward(self, x):
+        # print(x.size())
+        x = x.permute(0, 2, 1)
+        convolutions = [self.conv1(x), self.conv2(x)]
+        max_pooled = [torch.max(c, dim=2)[0] for c in convolutions]
+        print(max_pooled)
+        cat = torch.cat(max_pooled, dim=1)
+        print(cat.size())
+        # cat : [batch_size, len(kernel_sizes) * num_filters]
+        return cat
 
 
 class BiLSTM_CRF(nn.Module):
 
     def __init__(self, tagset_size, embedding_dim, hidden_dim, attention=False, num_layers=2, num_heads=4,
-                 model_checkpoint='../model_checkpoint/bert', pos2ix=None, pos_dim=2, char=False,
+                 model_checkpoint='../model_checkpoint', pos2ix=None, pos_dim=2, char=False,
                  pos=False):
         super(BiLSTM_CRF, self).__init__()
         if pos:
             self.embedding_dim = embedding_dim + pos_dim
         else:
             self.embedding_dim = embedding_dim
-        self.pos = pos
+        self.pos = True
         self.hidden_dim = hidden_dim
         self.num_layers = num_layers
         self.tagset_size = tagset_size
@@ -68,7 +120,7 @@ class BiLSTM_CRF(nn.Module):
         self.num_heads = num_heads
 
         # pos2ix=None,pod_dim=1,char=False,pos=False
-        self.embedder = Embedders(bert_path=model_checkpoint, pos2ix=pos2ix, pos=self.pos, pos_dim=pos_dim)
+        self.embedder = Embedders(bert_path=model_checkpoint, pos2ix=pos2ix, pos=self.pos, pos_dim=pos_dim, char=True)
 
         self.lstm = nn.LSTM(self.embedding_dim, self.hidden_dim,
                             num_layers=2, bidirectional=True)
@@ -101,7 +153,7 @@ class BiLSTM_CRF(nn.Module):
         embeds = self.embedder(x)
 
         # embeds=embeds.view(len(sentence), 1, -1)
-        att = x[:, 2, :]
+        att = x[1]
         lengths = torch.sum(att, 1)
         embeds = torch.nn.utils.rnn.pack_padded_sequence(embeds, lengths.cpu(), batch_first=True,
                                                          enforce_sorted=False)
@@ -110,11 +162,15 @@ class BiLSTM_CRF(nn.Module):
         if self.attention:
             lstm_out = self._get_attention_out_(lstm_out)
 
-        lstm_out, _ = torch.nn.utils.rnn.pad_packed_sequence(lstm_out, batch_first=True, total_length=180)
+        lstm_out, _ = torch.nn.utils.rnn.pad_packed_sequence(lstm_out, batch_first=True)
         print(lstm_out.size())
         lstm_feats = self.hidden2tag(lstm_out)
 
-        return lstm_feats
+        dim = lstm_feats.size(1)
+        print(att.size())
+        att = att[:, :dim]
+        att = att.byte()
+        return lstm_feats, att
 
     def neg_log_likelihood(self, x, tags):
         feats = self._get_lstm_features(x)
@@ -124,8 +180,9 @@ class BiLSTM_CRF(nn.Module):
     def forward(self, sentence):  # dont confuse this with _forward_alg above.
         # Get the emission scores from the BiLSTM
 
-        lstm_feats = self._get_lstm_features(sentence)
+        lstm_feats, att = self._get_lstm_features(sentence)
         # Find the best path, given the features.
         print(lstm_feats.size())
-        tag_seq = self.crf_module.decode(lstm_feats)
+
+        tag_seq = self.crf_module.decode(lstm_feats, att)
         return tag_seq
