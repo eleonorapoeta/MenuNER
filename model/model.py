@@ -1,65 +1,49 @@
 import torch.nn as nn
-from transformers import BertForPreTraining
 import torch
 from torchcrf import CRF
+from torch.nn.functional import relu
+from .embeddings import Embedders
 
 
-class Embedders(nn.Module):
-    def __init__(self, bert_path, pos2ix=None, pos_dim=2, char=False, pos=False):  # pos_dim scelta arbitrariamente
-        # per test, non sappiamo quale sia da usare
-        super(Embedders, self).__init__()
-        print("ciao")
-        print(len(pos2ix))
-        self.pos = pos
+class CharCNN(nn.Module):
 
-        if pos:
-            self.pos_dim = pos_dim
-            self.pos2ix = pos2ix
-            self.pos_embedder = nn.Embedding(len(pos2ix) + 1, pos_dim, padding_idx=0)
+    def __init__(self, in_channels, out_channels, kernel_sizes):
+        super().__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.kernel_sizes = kernel_sizes
 
-        self.char = char
+        self.conv1 = nn.Conv1d(in_channels=self.in_channels, out_channels=self.out_channels,
+                               kernel_size=self.kernel_sizes[0])
+        self.conv2 = nn.Conv1d(in_channels=self.in_channels, out_channels=self.out_channels,
+                               kernel_size=self.kernel_sizes[1])
 
-        self.bert = bert_model = BertForPreTraining.from_pretrained('../model_checkpoint/bert')
-
-    def bert_emb(self, x):
-        params = {
-            'input_ids': x[:, 0, :],
-            'attention_mask': x[:, 2, :],
-            'output_hidden_states': True,
-            'output_attentions': True,
-            'return_dict': True
-        }
-
-        out = self.bert(**params)
-        last_four_hidden_states = out.hidden_states[-4:]
-        stack = torch.stack(last_four_hidden_states, dim=-1)
-        embedded = torch.mean(stack, dim=-1)
-        # embedded = embedded.view(embedded.size(1), embedded.size(0), embedded.size(2))
-
-        return embedded
-
-    def forward(self, x, p=None):
-
-        x_p = x[:, 1, :]
-        x = self.bert_emb(x)
-        if self.pos:
-            x_p = self.pos_embedder(x_p)
-            x = torch.cat([x, x_p], dim=-1)
-
-        return x
+    def forward(self, x):
+        x = x.permute(0, 2, 1)
+        convolutions = [relu(self.conv1(x.type(torch.FloatTensor))), relu(self.conv2(x.type(torch.FloatTensor)))]
+        max_pooled = [torch.max(c, dim=2)[0] for c in convolutions]
+        print(max_pooled)
+        cat = torch.cat(max_pooled, dim=1)
+        print(cat.size())
+        # cat : [batch_size, len(kernel_sizes) * num_filters]
+        return cat
 
 
 class BiLSTM_CRF(nn.Module):
 
     def __init__(self, tagset_size, embedding_dim, hidden_dim, attention=False, num_layers=2, num_heads=4,
-                 model_checkpoint='../model_checkpoint/bert', pos2ix=None, pos_dim=2, char=False,
+                 model_checkpoint='../model_checkpoint', pos2ix=None, pos_dim=2, char=False,
                  pos=False):
         super(BiLSTM_CRF, self).__init__()
-        if pos:
-            self.embedding_dim = embedding_dim + pos_dim
-        else:
-            self.embedding_dim = embedding_dim
-        self.pos = pos
+        self.embedding_dim = embedding_dim
+        params = {
+            'char_voc_size': 262,
+            'char_embedding_dim': 25,
+            'num_filter': 30,
+            'kernels': [3, 9]
+        }
+
+        self.pos = True
         self.hidden_dim = hidden_dim
         self.num_layers = num_layers
         self.tagset_size = tagset_size
@@ -68,7 +52,17 @@ class BiLSTM_CRF(nn.Module):
         self.num_heads = num_heads
 
         # pos2ix=None,pod_dim=1,char=False,pos=False
-        self.embedder = Embedders(bert_path=model_checkpoint, pos2ix=pos2ix, pos=self.pos, pos_dim=pos_dim)
+        self.embedder = Embedders(bert_path=model_checkpoint, pos2ix=pos2ix, pos=self.pos,
+                                  pos_dim=pos_dim, char_vocab_size=262, char_len=50, max_length=512,
+                                  char_embeddding_dim=25, char=True)
+
+        if pos:
+            self.embedding_dim += pos_dim
+        else:
+            self.embedding_dim = embedding_dim
+
+        if char:
+            self.embedding_dim += self.embedder.last_dim
 
         self.lstm = nn.LSTM(self.embedding_dim, self.hidden_dim,
                             num_layers=2, bidirectional=True)
@@ -101,7 +95,7 @@ class BiLSTM_CRF(nn.Module):
         embeds = self.embedder(x)
 
         # embeds=embeds.view(len(sentence), 1, -1)
-        att = x[:, 2, :]
+        att = x[1]
         lengths = torch.sum(att, 1)
         embeds = torch.nn.utils.rnn.pack_padded_sequence(embeds, lengths.cpu(), batch_first=True,
                                                          enforce_sorted=False)
@@ -110,22 +104,23 @@ class BiLSTM_CRF(nn.Module):
         if self.attention:
             lstm_out = self._get_attention_out_(lstm_out)
 
-        lstm_out, _ = torch.nn.utils.rnn.pad_packed_sequence(lstm_out, batch_first=True, total_length=180)
+        lstm_out, _ = torch.nn.utils.rnn.pad_packed_sequence(lstm_out, batch_first=True)
         print(lstm_out.size())
         lstm_feats = self.hidden2tag(lstm_out)
 
-        return lstm_feats
+        dim = lstm_feats.size(1)
+        print(att.size())
+        att = att[:, :dim]
+        att = att.byte()
+        return lstm_feats, att
 
     def neg_log_likelihood(self, x, tags):
         feats = self._get_lstm_features(x)
         gold_score = self.crf(feats, tags)
         return -1 * gold_score
 
-    def forward(self, sentence):  # dont confuse this with _forward_alg above.
-        # Get the emission scores from the BiLSTM
-
-        lstm_feats = self._get_lstm_features(sentence)
-        # Find the best path, given the features.
+    def forward(self, sentence):
+        lstm_feats, att = self._get_lstm_features(sentence)
         print(lstm_feats.size())
-        tag_seq = self.crf_module.decode(lstm_feats)
+        tag_seq = self.crf_module.decode(lstm_feats, att)
         return tag_seq
