@@ -1,9 +1,10 @@
 import os
-from util import read_examples_data
+from transformers import BertTokenizer
+from util_preprocess import convert_examples_to_feature
+from util_preprocess import read_examples_data
 
 
 def dataner_preprocess(data_dir, train_name="train.txt", valid_name="valid.txt", test_name="test.txt"):
-
     print(data_dir)
 
     train_path = os.path.join(data_dir, train_name)

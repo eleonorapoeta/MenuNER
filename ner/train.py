@@ -1,14 +1,10 @@
 import argparse
-import torch
-import os
-import random
-
 from torch.utils.data import DataLoader
 
 from ner.preprocess import dataner_preprocess
 from ner.dataset import MenuDataset
 from model import BiLSTM_CRF
-from util import pos2ix, convert_examples_to_feature
+from util_preprocess import pos2ix, convert_examples_to_feature
 
 
 def main():
