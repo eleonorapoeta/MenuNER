@@ -33,10 +33,12 @@ def main():
 
     train_features, train_labels = next(iter(menu_dataset))
     tag_to_idx = {"PAD": 0, "B-MENU": 1, "I-MENU": 2, "O": 3, "STOP_TAG": 4}
-    model = BiLSTM_CRF(tagset_size=len(tag_to_idx), embedding_dim=768,
+    model = BiLSTM_CRF(tagset_size=len(tag_to_idx),
+                       embedding_dim=768,
                        hidden_dim=512,
                        pos2ix=pos2ix(train_examples),
-                       pos=True)
+                       pos=True,
+                       char=True)
 
     model(train_features)
 

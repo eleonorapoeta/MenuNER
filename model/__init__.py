@@ -1,6 +1,6 @@
-from .model import BiLSTM_CRF, Embedders
+from .model import BiLSTM_CRF, CharCNN
 
 __all__ = [
     "BiLSTM_CRF",
-    "Embedders"
+    "CharCNN"
 ]
