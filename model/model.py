@@ -103,7 +103,6 @@ class BiLSTM_CRF(nn.Module):
                                                          enforce_sorted=False)
         lstm_out, _ = self.lstm(embeds)
         print("lstm DONE")
-        print(lstm_out.size())
         lstm_out, _ = torch.nn.utils.rnn.pad_packed_sequence(lstm_out, batch_first=True, total_length=512)
         lstm_out = self.dropout(lstm_out)
 

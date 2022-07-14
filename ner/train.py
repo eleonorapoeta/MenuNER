@@ -53,11 +53,11 @@ def main():
     dataset_val = MenuDataset(input_feats_val)
 
     train_loader = DataLoader(dataset=dataset_train,
-                              batch_size=64,
+                              batch_size=8,
                               shuffle=True)
 
     valid_loader = DataLoader(dataset=dataset_val,
-                              batch_size=64,
+                              batch_size=8,
                               shuffle=True)
 
     tag_to_idx = {"PAD": 0, "B-MENU": 1, "I-MENU": 2, "O": 3, "STOP_TAG": 4}
