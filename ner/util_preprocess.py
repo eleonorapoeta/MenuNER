@@ -14,7 +14,7 @@ class InputExample(object):
 
 
 class InputFeature(object):
-    def __init__(self, token_id, pos_id, label_id, char_ids, attention, segment):
+    def __init__(self, token_id, label_id, pos_id, char_ids, attention, segment):
         self.token_id = token_id
         self.label_id = label_id  # token di nltk
         self.pos_id = pos_id

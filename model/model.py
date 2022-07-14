@@ -47,7 +47,7 @@ class BiLSTM_CRF(nn.Module):
         self.hidden_dim = hidden_dim
         self.num_layers = num_layers
         self.tagset_size = tagset_size
-
+        self.dropout = nn.Dropout(0.1)
         self.attention = attention
         self.num_heads = num_heads
 
@@ -68,7 +68,9 @@ class BiLSTM_CRF(nn.Module):
         self.lstm = nn.LSTM(self.embedding_dim, self.hidden_dim,
                             num_layers=2, bidirectional=True)
         # ADD ATTENTION
-        self.multihead_attn = nn.MultiheadAttention(self.hidden_dim * 2, self.num_heads, batch_first=True)
+        self.dim_multiHeadAtt = self.hidden_dim*2
+        self.multihead_attn = nn.MultiheadAttention(self.dim_multiHeadAtt, self.num_heads, batch_first=True)
+        self.norm_layer = nn.LayerNorm(self.dim_multiHeadAtt)
 
         # Maps the output of the LSTM into tag space.
         self.hidden2tag = nn.Linear(hidden_dim * 2, self.tagset_size)
@@ -79,23 +81,21 @@ class BiLSTM_CRF(nn.Module):
         return ((torch.randn(self.num_layers * 2, 1, self.hidden_dim)),
                 (torch.randn(self.num_layers * 2, 1, self.hidden_dim)))
 
-    def _get_attention_out_(self, x):
+    def _get_attention_out_(self, x, att):
+
+        padding_mask = att.ne(1)
         query = x
         key = x
         value = x
-        attn_output, attn_output_weights = self.multihead_attn(query, key, value)
-        lstm_feats = attn_output
-        # if self.layer_norm:
-        # lstm_feats= self.layernorm_mha(mha_out + lstm_feats) #da capire perché li somma
-
-        return lstm_feats
+        attn_output, attn_output_weights = self.multihead_attn(query, key, value, key_padding_mask=padding_mask)
+        return attn_output
 
     def _get_lstm_features(self, x):
 
         h = self.init_hidden()
         embeds = self.embedder(x)
         print("Embedding DONE")
-
+        embeds = self.dropout(embeds)
         # embeds=embeds.view(len(sentence), 1, -1)
         att = x[1]
         lengths = torch.sum(att, 1)
@@ -104,9 +104,13 @@ class BiLSTM_CRF(nn.Module):
         lstm_out, _ = self.lstm(embeds)
         print("lstm DONE")
         print(lstm_out.size())
-        lstm_out, _ = torch.nn.utils.rnn.pad_packed_sequence(lstm_out, batch_first=True)
+        lstm_out, _ = torch.nn.utils.rnn.pad_packed_sequence(lstm_out, batch_first=True, total_length=512)
+        lstm_out = self.dropout(lstm_out)
+
         if self.attention:
-            lstm_out = self._get_attention_out_(lstm_out)
+            att_out = self._get_attention_out_(lstm_out, att)
+            lstm_out = self.norm_layer(att_out + lstm_out)
+            lstm_out = self.dropout(lstm_out)
             print("attention DONE")
 
         print(lstm_out.size())
@@ -114,7 +118,6 @@ class BiLSTM_CRF(nn.Module):
         print("Linear DONE")
         dim = lstm_feats.size(1)
         print(att.size())
-        att = att[:, :dim]
         att = att.byte()
         return lstm_feats, att
 
@@ -129,5 +132,6 @@ class BiLSTM_CRF(nn.Module):
         lstm_feats, att = self._get_lstm_features(sentence)
         print(lstm_feats.size())
         tag_seq = self.crf_module.decode(lstm_feats, att)
+        tag_seq = torch.as_tensor(tag_seq, dtype=torch.long)
         print("MODEL DONE")
         return tag_seq
