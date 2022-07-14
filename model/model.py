@@ -68,7 +68,7 @@ class BiLSTM_CRF(nn.Module):
         self.lstm = nn.LSTM(self.embedding_dim, self.hidden_dim,
                             num_layers=2, bidirectional=True)
         # ADD ATTENTION
-        self.multihead_attn = nn.MultiheadAttention(self.hidden_dim * 2, self.num_heads)
+        self.multihead_attn = nn.MultiheadAttention(self.hidden_dim * 2, self.num_heads, batch_first=True)
 
         # Maps the output of the LSTM into tag space.
         self.hidden2tag = nn.Linear(hidden_dim * 2, self.tagset_size)
@@ -103,11 +103,12 @@ class BiLSTM_CRF(nn.Module):
                                                          enforce_sorted=False)
         lstm_out, _ = self.lstm(embeds)
         print("lstm DONE")
+        print(lstm_out.size())
+        lstm_out, _ = torch.nn.utils.rnn.pad_packed_sequence(lstm_out, batch_first=True)
         if self.attention:
             lstm_out = self._get_attention_out_(lstm_out)
             print("attention DONE")
 
-        lstm_out, _ = torch.nn.utils.rnn.pad_packed_sequence(lstm_out, batch_first=True)
         print(lstm_out.size())
         lstm_feats = self.hidden2tag(lstm_out)
         print("Linear DONE")

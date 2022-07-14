@@ -1,5 +1,5 @@
 import os
-from util_preprocess import read_examples_data
+from .util_preprocess import read_examples_data
 
 
 def dataner_preprocess(data_dir, file_name):
