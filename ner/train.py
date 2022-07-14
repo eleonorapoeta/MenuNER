@@ -6,7 +6,6 @@ import numpy as np
 import logging
 import torch.cuda
 from torch.utils.data import DataLoader
-from torch import nn
 import random
 from ner.preprocess import dataner_preprocess
 from ner.dataset import MenuDataset

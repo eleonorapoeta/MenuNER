@@ -1,6 +1,4 @@
 import os
-from transformers import BertTokenizer
-from util_preprocess import convert_examples_to_feature
 from util_preprocess import read_examples_data
 
 

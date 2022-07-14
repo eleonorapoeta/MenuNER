@@ -32,7 +32,7 @@ class CharCNN(nn.Module):
 class BiLSTM_CRF(nn.Module):
 
     def __init__(self, tagset_size, embedding_dim, hidden_dim, attention=False, num_layers=2, num_heads=4,
-                 model_checkpoint='../bert_checkpoint', pos2ix=None, pos_dim=2, char=False,
+                 bert_checkpoint='../bert_checkpoint', pos2ix=None, pos_dim=2, char=False,
                  pos=False):
         super(BiLSTM_CRF, self).__init__()
         self.embedding_dim = embedding_dim
@@ -52,7 +52,7 @@ class BiLSTM_CRF(nn.Module):
         self.num_heads = num_heads
 
         # pos2ix=None,pod_dim=1,char=False,pos=False
-        self.embedder = Embedders(bert_path=model_checkpoint, pos2ix=pos2ix, pos=self.pos,
+        self.embedder = Embedders(bert_path=bert_checkpoint, pos2ix=pos2ix, pos=self.pos,
                                   pos_dim=pos_dim, char_vocab_size=262,
                                   char_len=50,
                                   max_length=512,
