@@ -32,7 +32,7 @@ class CharCNN(nn.Module):
 class BiLSTM_CRF(nn.Module):
 
     def __init__(self, tagset_size, embedding_dim, hidden_dim, attention=False, num_layers=2, num_heads=4,
-                 model_checkpoint='../model_checkpoint', pos2ix=None, pos_dim=2, char=False,
+                 model_checkpoint='../bert_checkpoint', pos2ix=None, pos_dim=2, char=False,
                  pos=False):
         super(BiLSTM_CRF, self).__init__()
         self.embedding_dim = embedding_dim
@@ -53,13 +53,14 @@ class BiLSTM_CRF(nn.Module):
 
         # pos2ix=None,pod_dim=1,char=False,pos=False
         self.embedder = Embedders(bert_path=model_checkpoint, pos2ix=pos2ix, pos=self.pos,
-                                  pos_dim=pos_dim, char_vocab_size=262, char_len=50, max_length=512,
-                                  char_embeddding_dim=25, char=True)
+                                  pos_dim=pos_dim, char_vocab_size=262,
+                                  char_len=50,
+                                  max_length=512,
+                                  char_embedding_dim=25,  # Set by us
+                                  char=True)
 
         if pos:
             self.embedding_dim += pos_dim
-        else:
-            self.embedding_dim = embedding_dim
 
         if char:
             self.embedding_dim += self.embedder.last_dim
@@ -74,8 +75,8 @@ class BiLSTM_CRF(nn.Module):
 
         self.crf_module = CRF(self.tagset_size, batch_first=True)
 
-    def init_hidden(self, x):
-        return ((torch.randn(self.num_layers * 2, 1, self.hidden_dim)),  # eliminato .cuda()
+    def init_hidden(self):
+        return ((torch.randn(self.num_layers * 2, 1, self.hidden_dim)),
                 (torch.randn(self.num_layers * 2, 1, self.hidden_dim)))
 
     def _get_attention_out_(self, x):
@@ -91,8 +92,9 @@ class BiLSTM_CRF(nn.Module):
 
     def _get_lstm_features(self, x):
 
-        h = self.init_hidden(x)
+        h = self.init_hidden()
         embeds = self.embedder(x)
+        print("Embedding DONE")
 
         # embeds=embeds.view(len(sentence), 1, -1)
         att = x[1]
@@ -100,14 +102,15 @@ class BiLSTM_CRF(nn.Module):
         embeds = torch.nn.utils.rnn.pack_padded_sequence(embeds, lengths.cpu(), batch_first=True,
                                                          enforce_sorted=False)
         lstm_out, _ = self.lstm(embeds)
-
+        print("lstm DONE")
         if self.attention:
             lstm_out = self._get_attention_out_(lstm_out)
+            print("attention DONE")
 
         lstm_out, _ = torch.nn.utils.rnn.pad_packed_sequence(lstm_out, batch_first=True)
         print(lstm_out.size())
         lstm_feats = self.hidden2tag(lstm_out)
-
+        print("Linear DONE")
         dim = lstm_feats.size(1)
         print(att.size())
         att = att[:, :dim]
@@ -115,12 +118,15 @@ class BiLSTM_CRF(nn.Module):
         return lstm_feats, att
 
     def neg_log_likelihood(self, x, tags):
-        feats = self._get_lstm_features(x)
-        gold_score = self.crf(feats, tags)
+
+        feats, att = self._get_lstm_features(x)
+        gold_score = self.crf_module(feats, tags, mask=att)
+        print("Neg_Likelihood DONE")
         return -1 * gold_score
 
     def forward(self, sentence):
         lstm_feats, att = self._get_lstm_features(sentence)
         print(lstm_feats.size())
         tag_seq = self.crf_module.decode(lstm_feats, att)
+        print("MODEL DONE")
         return tag_seq

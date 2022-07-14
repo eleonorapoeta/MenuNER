@@ -4,14 +4,15 @@ import torch
 
 
 class Embedders(nn.Module):
-    def __init__(self, bert_path, char_vocab_size, char_embeddding_dim, char_len, max_length, pos2ix=None, pos_dim=2, char=False,
+    def __init__(self, bert_path, char_vocab_size, char_embedding_dim, char_len, max_length, pos2ix=None, pos_dim=2,
+                 char=False,
                  pos=False):
 
         from model import CharCNN
 
         params = {
             'in_channel': 25,
-            'out_channel': 30,
+            'out_channel': 30,  # Set by us
             'kernel': [3, 9],
         }
 
@@ -19,7 +20,7 @@ class Embedders(nn.Module):
         self.pos = pos
         self.char = char
         self.char_vocab_size = char_vocab_size
-        self.char_embedding_dim = char_embeddding_dim
+        self.char_embedding_dim = char_embedding_dim
         self.char_len = char_len
         self.max_length = max_length
         self.last_dim = len(params['kernel']) * params['out_channel']
@@ -40,14 +41,12 @@ class Embedders(nn.Module):
         # Embedding layer
         char_embed_out = self.char_emb_layer(x)
         char_embed_out = char_embed_out.view(-1, self.char_len, self.char_embedding_dim)
-        mask = x.view(-1, self.char_len).ne(0)  # not padding
-        # mask : [batch_size*seq_size, char_n_ctx]
+        mask = x.view(-1, self.char_len).ne(0)
         mask = mask.unsqueeze(2).to(torch.float)
-        char_embed_out *= mask  # masking, auto-broadcasting
+        char_embed_out *= mask
 
         out = self.char_embedder(char_embed_out)
         print(out.size())
-        # charcnn_out : [batch_size*seq_size, last_dim]
         charcnn_out = out.view(-1, self.max_length, out.shape[-1])
         return charcnn_out
 
