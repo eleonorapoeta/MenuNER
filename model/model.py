@@ -13,15 +13,21 @@ class CharCNN(nn.Module):
         self.out_channels = out_channels
         self.kernel_sizes = kernel_sizes
 
-        self.conv1 = nn.Conv1d(in_channels=self.in_channels, out_channels=self.out_channels,
-                               kernel_size=self.kernel_sizes[0])
-        self.conv2 = nn.Conv1d(in_channels=self.in_channels, out_channels=self.out_channels,
-                               kernel_size=self.kernel_sizes[1])
+        # self.conv1 = nn.Conv1d(in_channels=self.in_channels, out_channels=self.out_channels,
+        #                        kernel_size=self.kernel_sizes[0])
+        # self.conv2 = nn.Conv1d(in_channels=self.in_channels, out_channels=self.out_channels,
+        #                        kernel_size=self.kernel_sizes[1])
+
+        convs = []
+        for ks in kernel_sizes:
+            convs.append(nn.Conv1d(in_channels=in_channels, out_channels=out_channels, kernel_size=ks))
+        self.convs = nn.ModuleList(convs)
 
     def forward(self, x):
         x = x.permute(0, 2, 1)
-        convolutions = [relu(self.conv1(x.type(torch.FloatTensor))), relu(self.conv2(x.type(torch.FloatTensor)))]
-        max_pooled = [torch.max(c, dim=2)[0] for c in convolutions]
+        # convolutions = [relu(self.conv1(x.type(torch.FloatTensor))), relu(self.conv2(x.type(torch.FloatTensor)))]
+        conved = [relu(conv(x)) for conv in self.convs]
+        max_pooled = [torch.max(c, dim=2)[0] for c in conved]
         print(max_pooled)
         cat = torch.cat(max_pooled, dim=1)
         print(cat.size())
@@ -68,7 +74,7 @@ class BiLSTM_CRF(nn.Module):
         self.lstm = nn.LSTM(self.embedding_dim, self.hidden_dim,
                             num_layers=2, bidirectional=True)
         # ADD ATTENTION
-        self.dim_multiHeadAtt = self.hidden_dim*2
+        self.dim_multiHeadAtt = self.hidden_dim * 2
         self.multihead_attn = nn.MultiheadAttention(self.dim_multiHeadAtt, self.num_heads, batch_first=True)
         self.norm_layer = nn.LayerNorm(self.dim_multiHeadAtt)
 
