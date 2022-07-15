@@ -46,7 +46,6 @@ class Embedders(nn.Module):
         char_embed_out *= mask
 
         out = self.char_embedder(char_embed_out)
-        print(out.size())
         charcnn_out = out.view(-1, self.max_length, out.shape[-1])
         return charcnn_out
 
