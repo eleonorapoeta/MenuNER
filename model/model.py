@@ -138,7 +138,7 @@ class BiLSTM_CRF(nn.Module):
         print(lstm_feats.size())
         logits = lstm_feats
         tag_seq = self.crf_module.decode(lstm_feats)
+        tag_seq = torch.as_tensor(tag_seq, dtype=torch.long)
         prediction = tag_seq
-        # tag_seq = torch.as_tensor(tag_seq, dtype=torch.long)
         print("MODEL DONE")
         return logits, prediction
