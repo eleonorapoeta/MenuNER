@@ -127,16 +127,18 @@ class BiLSTM_CRF(nn.Module):
         return lstm_feats, att
 
     def neg_log_likelihood(self, x, tags):
-
+        mask = torch.sign(torch.abs(x[1])).to(torch.uint8)
         feats, att = self._get_lstm_features(x)
-        gold_score = self.crf_module(feats, tags, mask=att)
+        gold_score = self.crf_module(feats, tags, mask=mask)
         print("Neg_Likelihood DONE")
         return -1 * gold_score
 
     def forward(self, sentence):
         lstm_feats, att = self._get_lstm_features(sentence)
         print(lstm_feats.size())
-        tag_seq = self.crf_module.decode(lstm_feats, att)
-        tag_seq = torch.as_tensor(tag_seq, dtype=torch.long)
+        logits = lstm_feats
+        tag_seq = self.crf_module.decode(lstm_feats)
+        prediction = tag_seq
+        # tag_seq = torch.as_tensor(tag_seq, dtype=torch.long)
         print("MODEL DONE")
-        return tag_seq
+        return logits, prediction

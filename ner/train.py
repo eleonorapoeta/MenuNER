@@ -113,7 +113,12 @@ def main():
                 x = to_device(x, device)
                 y = to_device(y, device)
 
-                loss = model.neg_log_likelihood(x, y)
+                mask = torch.sign(torch.abs(x[1])).to(torch.uint8)
+                #loss = model.neg_log_likelihood(x, y)
+                logits, predictions = model(x)
+                log_likelihood = model.crf_module(logits, y, mask=mask, reduction = 'mean')
+
+                loss = log_likelihood * (-1)
 
                 # backpropagation
                 if device == 'cpu':
@@ -201,28 +206,30 @@ def eval(model, valid_loader, eval_device):
             model.eval()
             x = to_device(x, eval_device)
             y = to_device(y, eval_device)
-
-            predictions = model(x)
-            loss = model.neg_log_likelihood(x, y)
+            mask = torch.sign(torch.abs(x[1])).to(torch.uint8)
+            logits, predictions = model(x)
+            log_likelihood = model.crf_module(logits, y, mask=mask, reduction='mean')
+            loss = log_likelihood * (-1)
 
             if first_pred:
                 preds = to_numpy(predictions)
                 labels = to_numpy(y)
             else:
                 preds = np.append(preds, to_numpy(predictions), axis=0)
-                labels = np.append(labels, to_numpy(labels), axis=0)
+                labels = np.append(labels, to_numpy(y), axis=0)
 
             eval_loss += loss.item()
 
     eval_loss = eval_loss / n_batches
-    list_labels = [[] for _ in range(labels.shape)[0]]
-    list_preds = [[] for _ in range(preds.shape)[0]]
+    list_labels = [[] for _ in range(labels.shape[0])]
+    list_preds = [[] for _ in range(labels.shape[0])]
 
+    idx_to_tag = {0 : 'PAD', 1: 'B-MENU', 2: 'I-MENU', 3 : 'O'}
     for i in range(labels.shape[0]):
         for j in range(labels.shape[1]):
             if labels[i][j] != 0:  # pad
-                list_labels.append(labels[i][j])
-                list_preds.append(preds[i][j])
+                list_labels.append(idx_to_tag[labels[i][j]])
+                list_preds.append(idx_to_tag[preds[i][j]])
 
     report = {
         'loss': eval_loss,

@@ -14,13 +14,14 @@ class InputExample(object):
 
 
 class InputFeature(object):
-    def __init__(self, token_id, label_id, pos_id, char_ids, attention, segment):
+    def __init__(self, token_id, label_id, pos_id, char_ids, attention, segment, word2token_idx):
         self.token_id = token_id
         self.label_id = label_id  # token di nltk
         self.pos_id = pos_id
         self.attention = attention
         self.char_ids = char_ids
         self.segment = segment
+        self.word2token_idx = word2token_idx
 
 
 def word2charix(word, alpha_dict):
@@ -116,11 +117,16 @@ def convert_single_example_to_feature(example, tokenizer, tag_to_idx, pos_to_idx
     len_char_sequence = 50
     token_id = []
     pad_vec = [261 for i in range(len_char_sequence)]
+    word2token_idx = []
+    token_idx = 1  # consider first sub-token is '[CLS]'
     char_ids = []
     max_length = 512
 
     for w in example.tokens:
         t = tokenizer.tokenize(w)
+        if token_idx < max_length:
+            word2token_idx.append(token_idx)
+            token_idx += len(t)
         c_ids = batch_to_ids([t])[0].detach().numpy().tolist()
         char_ids.extend(c_ids)
         token_id.extend(tokenizer.convert_tokens_to_ids(t))
@@ -143,8 +149,11 @@ def convert_single_example_to_feature(example, tokenizer, tag_to_idx, pos_to_idx
     char_ids.extend(pad_vec for i in range(max_length - len(char_ids)))
     attention.extend([0 for i in range(max_length - len(attention))])
     segment.extend([1 for i in range(max_length - len(segment))])
+    word2token_idx.extend([0 for i in range(max_length - len(word2token_idx))])
+    assert len(word2token_idx) == max_length
 
-    return InputFeature(token_id, label_id, poss_id, char_ids, attention, segment)
+    return InputFeature(token_id, label_id, poss_id,
+                        char_ids, attention, segment, word2token_idx)
 
 
 def convert_examples_to_feature(examples):
