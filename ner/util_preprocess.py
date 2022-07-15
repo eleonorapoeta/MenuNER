@@ -76,6 +76,8 @@ def read_examples_data(file: str):
                     token = entry[0]
                     pos = entry[1]
                     label = entry[3]
+                    if label == 'B-MENU' or label == 'I-MENU':
+                        label = label.split('-')[1]
 
                     tokens.append(token)
                     t_w = tokenizer.tokenize(token)
@@ -84,7 +86,7 @@ def read_examples_data(file: str):
                             pos_seq.append(pos)
                             label_seq.append(label)
                     else:
-
+                        # tokens.append(token)
                         pos_seq.append(pos)
                         label_seq.append(label)
                 sent = ' '.join(tokens)
