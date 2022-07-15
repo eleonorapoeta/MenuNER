@@ -115,7 +115,7 @@ def convert_single_example_to_feature(example, tokenizer, tag_to_idx, pos_to_idx
     poss_id = [pos_to_idx[p] for p in example.poss]
     len_char_sequence = 50
     token_id = []
-    pad_vec = [0 for i in range(len_char_sequence)]
+    pad_vec = [261 for i in range(len_char_sequence)]
     char_ids = []
     max_length = 512
 

@@ -79,7 +79,7 @@ class BiLSTM_CRF(nn.Module):
         self.norm_layer = nn.LayerNorm(self.dim_multiHeadAtt)
 
         # Maps the output of the LSTM into tag space.
-        self.hidden2tag = nn.Linear(hidden_dim * 2, self.tagset_size)
+        self.hidden2tag = nn.Linear(self.dim_multiHeadAtt, self.tagset_size)
 
         self.crf_module = CRF(self.tagset_size, batch_first=True)
 
