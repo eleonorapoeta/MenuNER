@@ -23,16 +23,6 @@ class InputFeature(object):
         self.segment = segment
 
 
-def word2charix(word, alpha_dict):
-    w_c = []
-    len_v = 25
-    for c in word:
-        w_c.append(alpha_dict[c])
-    if len(w_c) < len_v:
-        w_c.extend([alpha_dict['PAD'] for i in range(len_v - len(w_c))])
-    return w_c
-
-
 def pos2ix(train_ex):
     p_dict = {'PAD': 0}
     for ex in train_ex:
@@ -40,8 +30,8 @@ def pos2ix(train_ex):
             if w not in p_dict:
                 p_dict[w] = len(p_dict)
 
-    with open('../data/pos2ix_dict.json', 'wb') as f:
-        json.dumps(p_dict, f)
+    with open('../data/pos2ix_dict.json', 'w') as f:
+        json.dumps(p_dict)
     return p_dict
 
 

@@ -1,22 +1,21 @@
 import numpy as np
 import torch
 from tqdm import tqdm
-from .metrics import calculate_metrics
-
+from seqeval.metrics import precision_score, recall_score, f1_score, classification_report
 
 def to_numpy(x):
-    if type(x) != list:  # torch.tensor
+    if type(x) != list:
         x = x.detach().cpu().numpy()
-    else:  # list of torch.tensor
+    else:
         for i in range(len(x)):
             x[i] = np.array(x[i])
     return x
 
 
 def to_device(x, device):
-    if type(x) != list:  # torch.tensor
+    if type(x) != list:
         x = x.to(device)
-    else:  # list of torch.tensor
+    else:
         for i in range(len(x)):
             x[i] = x[i].to(device)
     return x
@@ -58,13 +57,12 @@ def evaluation(model, loader, eval_device, epoch=" "):
                 list_labels[i].append(idx_to_tag[labels[i][j]])
                 list_preds[i].append(idx_to_tag[preds[i][j]])
 
-    precision, recall, f1_score = calculate_metrics(list_labels, list_preds)
-    print("==========EVALUATE===========")
-    print(f"{precision}", f"{recall}", f"{f1_score}")
-    report = {'loss': eval_loss,
-              'precision': precision,
-              'f1': f1_score,
-              'recall': recall
-              }
-
+    report = {
+        "loss": eval_loss,
+        "precision": precision_score(list_labels, list_preds),
+        "recall": recall_score(list_labels, list_preds),
+        "f1": f1_score(list_labels, list_preds),
+        "report": classification_report(list_labels, list_preds, digits=4),
+    }
+    print(report['report'])
     return report

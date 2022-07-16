@@ -13,7 +13,7 @@ def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--filtered_reviews_filename', type=str, default='../data/filtered_reviews.json')
-    parser.add_argument('--checkpoint_path', type=str, default='../bert_checkpoint/')
+    parser.add_argument('--checkpoint_path', type=str, default=None)
     params = parser.parse_args()
 
     with open(params.reviews_filename, 'r') as f:
@@ -90,3 +90,6 @@ def main():
         trainer.train()
 
     trainer.model.save_pretrained('../bert_checkpoint')
+
+if __name__ == '__main__':
+    main()

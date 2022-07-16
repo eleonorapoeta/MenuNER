@@ -11,7 +11,6 @@ class Embedders(nn.Module):
         from model import CharCNN
 
         params = {
-            'in_channel': 25,
             'out_channel': 30,  # Set by us
             'kernel': [3, 9],
         }
@@ -26,8 +25,8 @@ class Embedders(nn.Module):
         self.last_dim = len(params['kernel']) * params['out_channel']
 
         if char:
-            self.char_emb_layer = nn.Embedding(self.char_vocab_size, self.char_embedding_dim, padding_idx=0)
-            self.char_embedder = CharCNN(params['in_channel'], params['out_channel'], params['kernel'])
+            self.char_emb_layer = nn.Embedding(self.char_vocab_size, self.char_embedding_dim, padding_idx=261)
+            self.char_embedder = CharCNN(self.char_embedding_dim, params['out_channel'], params['kernel'])
 
         if pos:
             self.pos_dim = pos_dim
@@ -58,11 +57,11 @@ class Embedders(nn.Module):
             'return_dict': True
         }
 
-        out = self.bert(**params)
-        last_four_hidden_states = out.hidden_states[-4:]
-        stack = torch.stack(last_four_hidden_states, dim=-1)
-        embedded = torch.mean(stack, dim=-1)
-        # embedded = embedded.view(embedded.size(1), embedded.size(0), embedded.size(2))
+        with torch.no_grad():
+            out = self.bert(**params)
+            last_four_hidden_states = out.hidden_states[-4:]
+            stack = torch.stack(last_four_hidden_states, dim=-1)
+            embedded = torch.mean(stack, dim=-1)
 
         return embedded
 

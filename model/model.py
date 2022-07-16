@@ -13,11 +13,6 @@ class CharCNN(nn.Module):
         self.out_channels = out_channels
         self.kernel_sizes = kernel_sizes
 
-        # self.conv1 = nn.Conv1d(in_channels=self.in_channels, out_channels=self.out_channels,
-        #                        kernel_size=self.kernel_sizes[0])
-        # self.conv2 = nn.Conv1d(in_channels=self.in_channels, out_channels=self.out_channels,
-        #                        kernel_size=self.kernel_sizes[1])
-
         convs = []
         for ks in kernel_sizes:
             convs.append(nn.Conv1d(in_channels=in_channels, out_channels=out_channels, kernel_size=ks))
@@ -34,16 +29,15 @@ class CharCNN(nn.Module):
 
 class BiLSTM_CRF(nn.Module):
 
-    def __init__(self, tagset_size, embedding_dim, hidden_dim, max_length, attention=False, num_layers=2, num_heads=4,
-                 bert_checkpoint='../bert_checkpoint', pos2ix=None, pos_embedding_dim=64, char=False, char_embedding_dim=25,
-                 pos=False):
+    def __init__(self, tagset_size, embedding_dim, hidden_dim, max_length, attention=True, num_layers=2, num_heads=4,
+                 bert_checkpoint='../bert_checkpoint', pos2ix=None, pos_embedding_dim=64, char=True, char_embedding_dim=25,
+                 pos=True):
         super(BiLSTM_CRF, self).__init__()
+
         self.embedding_dim = embedding_dim
         params = {
             'char_voc_size': 262,
-            'char_len' : 50,
-            'num_filter': 32,
-            'kernels': [3, 9]
+            'char_len': 50
         }
 
         self.pos = pos
@@ -107,7 +101,6 @@ class BiLSTM_CRF(nn.Module):
             lstm_out = self.dropout(lstm_out)
 
         lstm_feats = self.hidden2tag(lstm_out)
-        dim = lstm_feats.size(1)
         att = att.byte()
         return lstm_feats, att
 

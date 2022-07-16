@@ -27,13 +27,14 @@ def main():
     parser.add_argument('--max_length', type=int, default=512)
     parser.add_argument('--train', type=str, default='train.txt')
     parser.add_argument('--val', type=str, default='valid.txt')
-    parser.add_argument('--lr', type=float, default=10e-3)
+    parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--epochs', type=int, default=30)
-    parser.add_argument('--bert_checkpoint', type=str)
+    parser.add_argument('--bert_checkpoint', type=str, default='../bert_checkpoint', help='Folder in which there is '
+                                                                                          'BERT domain')
     parser.add_argument('--pos', type=bool, default=True)
     parser.add_argument('--pos_embedding_dim', type=int, default=64)
     parser.add_argument('--char', type=bool, default=True)
-    parser.add_argument('--char_embedding_dim', type=int, default=32)
+    parser.add_argument('--char_embedding_dim', type=int, default=25)
     parser.add_argument('--attention', type=bool, default=True)
     parser.add_argument('--eval_and_save_steps', type=int, default=500)
     opt = parser.parse_args()
@@ -101,7 +102,7 @@ def main():
 
         best_f1_score = - float('inf')
         best_f1_score_epoch = 0
-        path_checkpoint = '/content/drive/MyDrive/DNLP_Polito/Model/ELEONORA/onlyBERT.pt'  # modified
+        path_checkpoint = '/content/drive/MyDrive/DNLP_Polito/Model/ELEONORA/model.pt'
         for epoch in range(opt.epochs):
             train_loss = 0.
             local_best_eval_loss = float('inf')
@@ -115,7 +116,6 @@ def main():
                 y = to_device(y, device)
 
                 mask = torch.sign(torch.abs(x[1])).to(torch.uint8)
-                # loss = model.neg_log_likelihood(x, y)
                 logits, predictions = model(x)
                 log_likelihood = model.crf_module(logits, y, mask=mask, reduction='mean')
 
@@ -130,17 +130,9 @@ def main():
                 if device == 'cpu':
                     optimizer.step()
                 else:
-                    # Unscales the gradients of optimizer's assigned params in-place
                     scaler.unscale_(optimizer)
-
-                    # Since the gradients of optimizer's assigned params are unscaled, clips:
                     torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-
-                    # optimizer's gradients are already unscaled, so scaler.step does not unscale them,
-                    # although it still skips optimizer.step() if the gradients contain infs or NaNs.
                     scaler.step(optimizer)
-
-                    # Updates the scale for next iteration.
                     scaler.update()
 
                 optimizer.zero_grad()
@@ -166,7 +158,7 @@ def main():
 
                 train_loss += loss.item()
 
-                # Evaluate in each epoch
+            # Evaluate in each epoch
             report = evaluation(model, valid_loader, device, epoch)
 
             if local_best_eval_loss > report['loss']:
@@ -177,7 +169,7 @@ def main():
 
             if report['f1'] > best_f1_score:
                 best_f1_score = report['f1']
-                best_f1_score_epoch = epoch  # Our Early stopping
+                best_f1_score_epoch = epoch
                 with open(path_checkpoint, 'wb') as f:
                     checkpoint = model.state_dict()
                     torch.save(checkpoint, f)

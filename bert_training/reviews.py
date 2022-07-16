@@ -33,7 +33,7 @@ def main():
     b_ids = list(df_restaurants['business_id'])
 
     text_reviews = textReviewsRestaurant(params.reviews_filename, b_ids=b_ids)
-    with open('reviews.json', 'w') as f:
+    with open('filtered_reviews.json', 'w') as f:
         json.dump(text_reviews, f, indent=1)
 
 

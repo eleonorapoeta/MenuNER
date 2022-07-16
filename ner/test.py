@@ -25,7 +25,7 @@ def main():
     parser.add_argument('--pos', type=bool, default=True)
     parser.add_argument('--pos_embedding_dim', type=int, default=64)
     parser.add_argument('--char', type=bool, default=True)
-    parser.add_argument('--char_embedding_dim', type=int, default=32)
+    parser.add_argument('--char_embedding_dim', type=int, default=25)
     parser.add_argument('--attention', type=bool, default=True)
     opt = parser.parse_args()
 
@@ -33,8 +33,8 @@ def main():
 
     test_examples = dataner_preprocess(opt.data_dir, opt.test)
     input_feats_test = convert_examples_to_feature(test_examples)
-    dataset_val = MenuDataset(input_feats_test)
-    valid_loader = DataLoader(dataset=dataset_val,
+    dataset_test = MenuDataset(input_feats_test)
+    test_loader = DataLoader(dataset=dataset_test,
                               batch_size=8,
                               shuffle=True)
 
@@ -61,17 +61,17 @@ def main():
     checkpoint = torch.load(opt.model_path)
     model.load_state_dict(checkpoint)
 
-    report = evaluation(model, valid_loader, device)
+    result = evaluation(model, test_loader, device)
 
     logs = {
-        'precision': report['precision'],
-        'f1': report['f1'],
-        'recall': report['recall']
+        'precision': result['precision'],
+        'f1': result['f1'],
+        'recall': result['recall']
     }
 
     logger.info(json.dumps(logs, indent=4))
 
-    print(report)
+    print(result['classification_report'])
 
 
 if __name__ == '__main__':
