@@ -17,7 +17,7 @@ def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--data_dir', type=str, default='../data/menu/')
-    parser.add_argument('--pos2ix', type=str, default='../data/pos2ix_dict.json')
+    parser.add_argument('--pos2ix', type=str, default='../data/pos2idx.json')
     parser.add_argument('--model_path', type=str, default='../data/model_checkpoint.pt')
     parser.add_argument('--bert_checkpoint', type=str, default='../bert_checkpoint')
     parser.add_argument('--max_length', type=int, default=512)

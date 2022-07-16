@@ -23,14 +23,14 @@ class InputFeature(object):
         self.segment = segment
 
 
-def pos2ix(train_ex):
+def pos2ix(train_ex, pos2ix_path):
     p_dict = {'PAD': 0}
     for ex in train_ex:
         for w in ex.poss:
             if w not in p_dict:
                 p_dict[w] = len(p_dict)
 
-    with open('../data/pos2ix_dict.json', 'w') as f:
+    with open(pos2ix_path, 'w') as f:
         json.dumps(p_dict)
     return p_dict
 
@@ -128,7 +128,8 @@ def convert_single_example_to_feature(example, tokenizer, tag_to_idx, pos_to_idx
 def convert_examples_to_feature(examples):
     input_feats = []
     tag_to_idx = {"PAD": 0, "MENU": 1, "O": 2}
-    pos_to_idx = pos2ix(examples)
+    pos2ix_path = '../data/pos2idx.json'
+    pos_to_idx = pos2ix(examples, pos2ix_path)
     tokenizer = BertTokenizer.from_pretrained("bert-base-cased")
     for (ex_index, example) in enumerate(tqdm(examples)):
         input_feat = convert_single_example_to_feature(example, tokenizer, tag_to_idx, pos_to_idx)
