@@ -13,7 +13,7 @@ from util_preprocess import pos2ix, convert_examples_to_feature
 from transformers import AdamW, get_linear_schedule_with_warmup
 from datasets.metric import temp_seed
 from torch.cuda.amp import GradScaler
-from .util import to_device, evaluation
+from ner.util import to_device, evaluation
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
