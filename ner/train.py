@@ -26,7 +26,6 @@ def main():
     parser.add_argument('--seed', type=int, default=1000)
     parser.add_argument('--max_length', type=int, default=512)
     parser.add_argument('--train', type=str, default='train.txt')
-    parser.add_argument('--test', type=str, default='test.txt')
     parser.add_argument('--val', type=str, default='valid.txt')
     parser.add_argument('--lr', type=float, default=10e-3)
     parser.add_argument('--epochs', type=int, default=30)
@@ -37,10 +36,9 @@ def main():
     # set seed
     random.seed(opt.seed)
 
-    # Processing of data and creation of features - TRAIN/TEST/VAL
+    # Processing of data and creation of features - TRAIN/VAL
 
     train_examples = dataner_preprocess(opt.data_dir, opt.train)
-    test_examples = dataner_preprocess(opt.data_dir, opt.test)
     val_examples = dataner_preprocess(opt.data_dir, opt.val)
 
     # Create Feature

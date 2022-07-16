@@ -22,13 +22,13 @@ def to_device(x, device):
     return x
 
 
-def evaluation(model, valid_loader, eval_device, epoch):
+def evaluation(model, loader, eval_device, epoch=" "):
     eval_loss = 0.
-    n_batches = len(valid_loader)
+    n_batches = len(loader)
 
     first_pred = True
     with torch.no_grad():
-        for step, (x, y) in enumerate(tqdm(valid_loader, total=len(valid_loader), desc=f"Epoch {epoch}")):
+        for step, (x, y) in enumerate(tqdm(loader, total=len(loader), desc=f"Evaluation {epoch}")):
             model.eval()
             x = to_device(x, eval_device)
             y = to_device(y, eval_device)
