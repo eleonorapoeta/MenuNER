@@ -8,15 +8,15 @@ from transformers import BertTokenizer
 class InputExample(object):
     def __init__(self, sent, tokens, poss, labels):
         self.sent = sent
-        self.tokens = tokens  # token di nltk
+        self.tokens = tokens
         self.poss = poss
         self.labels = labels
 
 
 class InputFeature(object):
-    def __init__(self, token_id, pos_id, label_id, char_ids, attention, segment):
+    def __init__(self, token_id, label_id, pos_id, char_ids, attention, segment):
         self.token_id = token_id
-        self.label_id = label_id  # token di nltk
+        self.label_id = label_id
         self.pos_id = pos_id
         self.attention = attention
         self.char_ids = char_ids
@@ -51,7 +51,6 @@ def pos2ix(train_ex):
             if w not in p_dict:
                 p_dict[w] = len(p_dict)
     return p_dict
-    # AGGIUNGERE CARATTERE PER OUT OF VOCAB
 
 
 def read_examples_data(file: str):
@@ -77,19 +76,15 @@ def read_examples_data(file: str):
                     token = entry[0]
                     pos = entry[1]
                     label = entry[3]
+                    if label == 'B-MENU' or label == 'I-MENU':
+                        label = label.split('-')[1]
 
                     tokens.append(token)
                     t_w = tokenizer.tokenize(token)
                     if len(t_w) > 1:  # if word is split we have to align the number of labels and pos tags
                         for i in range(len(t_w)):
                             pos_seq.append(pos)
-                            if i != 0:
-                                if label == 'B-MENU' or label == 'I-MENU':  # label extend
-                                    label_seq.append('I-MENU')
-                                else:
-                                    label_seq.append(label)
-                            else:
-                                label_seq.append(label)
+                            label_seq.append(label)
                     else:
                         # tokens.append(token)
                         pos_seq.append(pos)
@@ -115,7 +110,7 @@ def convert_single_example_to_feature(example, tokenizer, tag_to_idx, pos_to_idx
     poss_id = [pos_to_idx[p] for p in example.poss]
     len_char_sequence = 50
     token_id = []
-    pad_vec = [0 for i in range(len_char_sequence)]
+    pad_vec = [261 for i in range(len_char_sequence)]  # idx designed as 'pad' fpor this vocabulary
     char_ids = []
     max_length = 512
 
@@ -144,20 +139,16 @@ def convert_single_example_to_feature(example, tokenizer, tag_to_idx, pos_to_idx
     attention.extend([0 for i in range(max_length - len(attention))])
     segment.extend([1 for i in range(max_length - len(segment))])
 
-    return InputFeature(token_id, label_id, poss_id, char_ids, attention, segment)
+    return InputFeature(token_id, label_id, poss_id,
+                        char_ids, attention, segment)
 
 
 def convert_examples_to_feature(examples):
     input_feats = []
-    tag_to_idx = {"PAD": 0, "B-MENU": 1, "I-MENU": 2, "O": 3, "STOP_TAG": 4}
+    tag_to_idx = {"PAD": 0, "MENU": 1, "O": 2}
     pos_to_idx = pos2ix(examples)
     tokenizer = BertTokenizer.from_pretrained("bert-base-cased")
     for (ex_index, example) in enumerate(tqdm(examples)):
-        '''
-        if ex_index % 1000 == 0:get_examples_dataset
-            logger.info("Writing example %d of %d", ex_index, len(examples))
-        '''
-
         input_feat = convert_single_example_to_feature(example, tokenizer, tag_to_idx, pos_to_idx)
         input_feats.append(input_feat)
 

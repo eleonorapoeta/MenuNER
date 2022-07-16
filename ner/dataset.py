@@ -12,7 +12,8 @@ class MenuDataset(Dataset):
         total_char_ids = torch.tensor([f.char_ids for f in input_features], dtype=torch.long)
         total_label_ids = torch.tensor([f.label_id for f in input_features], dtype=torch.long)
 
-        self.x = TensorDataset(total_input_ids, total_attention, total_segment, total_pos_ids, total_char_ids)
+        self.x = TensorDataset(total_input_ids, total_attention, total_segment,
+                               total_pos_ids, total_char_ids)
         self.y = total_label_ids
 
     def __len__(self):
