@@ -46,7 +46,7 @@ class BiLSTM_CRF(nn.Module):
             'kernels': [3, 9]
         }
 
-        self.pos = True
+        self.pos = pos
         self.hidden_dim = hidden_dim
         self.num_layers = num_layers
         self.tagset_size = tagset_size
