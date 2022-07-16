@@ -30,7 +30,12 @@ def main():
     parser.add_argument('--lr', type=float, default=10e-3)
     parser.add_argument('--epochs', type=int, default=30)
     parser.add_argument('--bert_checkpoint', type=str)
-    parser.add_argument('--eval_and_save_steps', type=int, default=500, help="Save checkpoint every X steps.")
+    parser.add_argument('--pos', type=bool, default=True)
+    parser.add_argument('--pos_embedding_dim', type=int, default=64)
+    parser.add_argument('--char', type=bool, default=True)
+    parser.add_argument('--char_embedding_dim', type=int, default=32)
+    parser.add_argument('--attention', type=bool, default=True)
+    parser.add_argument('--eval_and_save_steps', type=int, default=500)
     opt = parser.parse_args()
 
     # set seed
@@ -73,10 +78,11 @@ def main():
                            embedding_dim=768,
                            hidden_dim=512,
                            pos2ix=pos2ix(train_examples),
-                           pos_dim=64,
-                           pos=False,
-                           char=False,
-                           attention=True).to(device)
+                           pos_embedding_dim=opt.pos_embedding_dim,
+                           pos=opt.pos,
+                           char=opt.char,
+                           char_embedding_dim=opt.char_embedding_dim,
+                           attention=opt.attention).to(device)
 
         # create optimizer, scheduler, scaler, early_stopping
         optimizer = AdamW(params=model.parameters(),

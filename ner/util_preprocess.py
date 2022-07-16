@@ -39,6 +39,9 @@ def pos2ix(train_ex):
         for w in ex.poss:
             if w not in p_dict:
                 p_dict[w] = len(p_dict)
+
+    with open('../data/pos2ix_dict.json', 'wb') as f:
+        json.dumps(p_dict, f)
     return p_dict
 
 
