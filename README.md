@@ -20,7 +20,7 @@ feature vectors.</i>
 ## Our Architecture
 
 <p align="center">
-<img src="https://github.com/eleonorapoeta/MenuNER/images/architecture.jpg" alt="architeture" width="70%"/>
+<img src="images/architecture.png" alt="architeture" width="70%"/>
 </p>
 MenuNER architecture used in this work. Each word of each sentence is embedded with POS, BERT and Char 
 embedding layer (green). Then the BiLSTM (orange), along with the 
@@ -101,5 +101,5 @@ test.py
 ## Usage
 To easily test all the experiments aforementioned we also provide the following Google Colab notebook.
 All of our experiments are run on Google Colab framework.
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akatief/eurecom-evidence-generator/blob/develop/examples/TENET_colab.ipynb)
+
 
