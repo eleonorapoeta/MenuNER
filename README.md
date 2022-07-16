@@ -101,5 +101,6 @@ test.py
 ## Usage
 To easily test all the experiments aforementioned we also provide the following Google Colab notebook.
 All of our experiments are run on Google Colab framework.
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/eleonorapoeta/MenuNER/blob/develop/notebook/MenuNER.ipynb)
 
 
