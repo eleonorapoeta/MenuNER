@@ -1,0 +1,11 @@
+numpy
+tqdm
+pandas
+transformers
+torch
+torchcrf
+allennlp
+datasets
+seqeval
+pytorch-crf
+spacy
