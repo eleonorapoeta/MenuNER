@@ -34,7 +34,7 @@ class Embedders(nn.Module):
             self.pos2ix = pos2ix
             self.pos_embedder = nn.Embedding(len(pos2ix) + 1, pos_dim, padding_idx=0)
 
-        self.bert = bert_model = BertForPreTraining.from_pretrained(bert_path)
+        self.bert = BertForPreTraining.from_pretrained(bert_path)
 
     def char_cnn(self, x):
 
@@ -66,7 +66,7 @@ class Embedders(nn.Module):
 
         return embedded
 
-    def forward(self, x, p=None):
+    def forward(self, x):
 
         x_p = x[3]
         x_b = self.bert_emb(x)

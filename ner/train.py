@@ -2,7 +2,6 @@ import argparse
 import json
 
 from tqdm import tqdm
-import numpy as np
 import logging
 import torch.cuda
 from torch.utils.data import DataLoader
@@ -14,8 +13,7 @@ from util_preprocess import pos2ix, convert_examples_to_feature
 from transformers import AdamW, get_linear_schedule_with_warmup
 from datasets.metric import temp_seed
 from torch.cuda.amp import GradScaler
-from .util import to_numpy, to_device, evaluate
-from seqeval.metrics import f1_score, recall_score, precision_score, classification_report
+from .util import to_device, evaluation
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,11 +24,13 @@ def main():
 
     parser.add_argument('--data_dir', type=str, default='../data/menu/')
     parser.add_argument('--seed', type=int, default=1000)
+    parser.add_argument('--max_length', type=int, default=512)
     parser.add_argument('--train', type=str, default='train.txt')
     parser.add_argument('--test', type=str, default='test.txt')
     parser.add_argument('--val', type=str, default='valid.txt')
     parser.add_argument('--lr', type=float, default=10e-3)
     parser.add_argument('--epochs', type=int, default=30)
+    parser.add_argument('--bert_checkpoint', type=str)
     parser.add_argument('--eval_and_save_steps', type=int, default=500, help="Save checkpoint every X steps.")
     opt = parser.parse_args()
 
@@ -65,18 +65,20 @@ def main():
     if torch.cuda.is_available():
         logger.info("%s", torch.cuda.get_device_name(0))
         device = torch.device('cuda')
-
-    device = torch.device('cpu')
+    else:
+        device = torch.device('cpu')
 
     with temp_seed(opt.seed):
         model = BiLSTM_CRF(tagset_size=len(tag_to_idx),
+                           bert_checkpoint=opt.bert_checkpoint,
+                           max_length=opt.max_length,
                            embedding_dim=768,
                            hidden_dim=512,
                            pos2ix=pos2ix(train_examples),
                            pos_dim=64,
-                           pos=True,
-                           char=True,
-                           attention=True)
+                           pos=False,
+                           char=False,
+                           attention=True).to(device)
 
         # create optimizer, scheduler, scaler, early_stopping
         optimizer = AdamW(params=model.parameters(),
@@ -92,10 +94,10 @@ def main():
                                                     num_training_steps=num_training_steps)
 
         scaler = GradScaler()
-        num_batches = len(train_loader)
 
         best_f1_score = - float('inf')
-        path_checkpoint = '../model_checkpoint'
+        best_f1_score_epoch = 0
+        path_checkpoint = '/content/drive/MyDrive/DNLP_Polito/Model/ELEONORA/onlyBERT.pt'  # modified
         for epoch in range(opt.epochs):
             train_loss = 0.
             local_best_eval_loss = float('inf')
@@ -109,6 +111,7 @@ def main():
                 y = to_device(y, device)
 
                 mask = torch.sign(torch.abs(x[1])).to(torch.uint8)
+                # loss = model.neg_log_likelihood(x, y)
                 logits, predictions = model(x)
                 log_likelihood = model.crf_module(logits, y, mask=mask, reduction='mean')
 
@@ -126,7 +129,7 @@ def main():
                     # Unscales the gradients of optimizer's assigned params in-place
                     scaler.unscale_(optimizer)
 
-                    # Since the gradients of optimizer's assigned params are unscaled, clips as usual:
+                    # Since the gradients of optimizer's assigned params are unscaled, clips:
                     torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
 
                     # optimizer's gradients are already unscaled, so scaler.step does not unscale them,
@@ -143,7 +146,7 @@ def main():
                 global_step = (len(train_loader) * epoch) + step
 
                 if opt.eval_and_save_steps > 0 and global_step != 0 and global_step % opt.eval_and_save_steps == 0:
-                    report = evaluate(model, valid_loader, device)
+                    report = evaluation(model, valid_loader, device, epoch)
 
                     if local_best_eval_loss > report['loss']:
                         local_best_eval_loss = report['loss']
@@ -159,8 +162,8 @@ def main():
 
                 train_loss += loss.item()
 
-            # Evaluate in each epoch
-            report = evaluate(model, valid_loader, device)
+                # Evaluate in each epoch
+            report = evaluation(model, valid_loader, device, epoch)
 
             if local_best_eval_loss > report['loss']:
                 local_best_eval_loss = report['loss']

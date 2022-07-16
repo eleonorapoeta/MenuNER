@@ -22,13 +22,13 @@ def to_device(x, device):
     return x
 
 
-def evaluate(model, loader, eval_device):
+def evaluation(model, valid_loader, eval_device, epoch):
     eval_loss = 0.
-    n_batches = len(loader)
+    n_batches = len(valid_loader)
 
     first_pred = True
     with torch.no_grad():
-        for step, (x, y) in enumerate(tqdm(loader, total=len(loader), desc="Evaluate")):
+        for step, (x, y) in enumerate(tqdm(valid_loader, total=len(valid_loader), desc=f"Epoch {epoch}")):
             model.eval()
             x = to_device(x, eval_device)
             y = to_device(y, eval_device)
@@ -51,21 +51,20 @@ def evaluate(model, loader, eval_device):
     list_labels = [[] for _ in range(labels.shape[0])]
     list_preds = [[] for _ in range(labels.shape[0])]
 
-    idx_to_tag = {0: 'PAD', 1: 'MENU', 2: 'O'}
+    idx_to_tag = {0: 'O', 1: 'MENU', 2: 'O'}
     for i in range(labels.shape[0]):
         for j in range(labels.shape[1]):
             if labels[i][j] != 0:  # pad
-                list_labels.append(idx_to_tag[labels[i][j]])
-                list_preds.append(idx_to_tag[preds[i][j]])
+                list_labels[i].append(idx_to_tag[labels[i][j]])
+                list_preds[i].append(idx_to_tag[preds[i][j]])
 
-    precision_score, recall_score, f1_score = calculate_metrics(list_labels, list_preds)
+    precision, recall, f1_score = calculate_metrics(list_labels, list_preds)
+    print("==========EVALUATE===========")
+    print(f"{precision}", f"{recall}", f"{f1_score}")
+    report = {'loss': eval_loss,
+              'precision': precision,
+              'f1': f1_score,
+              'recall': recall
+              }
 
-    report = {
-        'loss': eval_loss,
-        'precision': precision_score,
-        'f1': f1_score,
-        'recall': recall_score
-    }
-
-    print(report)
     return report
