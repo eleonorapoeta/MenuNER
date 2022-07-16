@@ -35,14 +35,13 @@ class CharCNN(nn.Module):
 class BiLSTM_CRF(nn.Module):
 
     def __init__(self, tagset_size, embedding_dim, hidden_dim, max_length, attention=False, num_layers=2, num_heads=4,
-                 bert_checkpoint='../bert_checkpoint', pos2ix=None, pos_dim=2, char=False,
+                 bert_checkpoint='../bert_checkpoint', pos2ix=None, pos_embedding_dim=64, char=False, char_embedding_dim=25,
                  pos=False):
         super(BiLSTM_CRF, self).__init__()
         self.embedding_dim = embedding_dim
         params = {
             'char_voc_size': 262,
             'char_len' : 50,
-            'char_embedding_dim': 25,
             'num_filter': 32,
             'kernels': [3, 9]
         }
@@ -57,14 +56,14 @@ class BiLSTM_CRF(nn.Module):
 
         # pos2ix=None,pod_dim=1,char=False,pos=False
         self.embedder = Embedders(bert_path=bert_checkpoint, pos2ix=pos2ix, pos=self.pos,
-                                  pos_dim=pos_dim, char_vocab_size=params['char_voc_size'],
+                                  pos_dim=pos_embedding_dim, char_vocab_size=params['char_voc_size'],
                                   char_len=params['char_len'],
                                   max_length=max_length,
-                                  char_embedding_dim=params['char_embedding_dim'],  # Set by us
+                                  char_embedding_dim=char_embedding_dim,  # Set by us
                                   char=char)
 
         if pos:
-            self.embedding_dim += pos_dim
+            self.embedding_dim += pos_embedding_dim
 
         if char:
             self.embedding_dim += self.embedder.last_dim

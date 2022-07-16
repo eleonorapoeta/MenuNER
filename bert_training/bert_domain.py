@@ -12,7 +12,7 @@ from bert_training.bert_domain_utils import input_data_prep, FoodDomainDataset
 def main():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--reviews_filename', type=str, default='../data/reviews.json')
+    parser.add_argument('--filtered_reviews_filename', type=str, default='../data/filtered_reviews.json')
     parser.add_argument('--checkpoint_path', type=str, default='../bert_checkpoint/')
     params = parser.parse_args()
 

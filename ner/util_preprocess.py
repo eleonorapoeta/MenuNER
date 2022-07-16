@@ -33,23 +33,15 @@ def word2charix(word, alpha_dict):
     return w_c
 
 
-def char2ix(alphabet_path: str):
-    with open(alphabet_path, 'r') as f:
-        data = json.load(f)
-    alpha_dict = {'PAD': 0}
-    for i, a in enumerate(data):
-        if a not in alpha_dict:
-            alpha_dict[a] = i + 1
-
-    return alpha_dict
-
-
 def pos2ix(train_ex):
     p_dict = {'PAD': 0}
     for ex in train_ex:
         for w in ex.poss:
             if w not in p_dict:
                 p_dict[w] = len(p_dict)
+
+    with open('../data/pos2ix_dict.json', 'wb') as f:
+        json.dumps(p_dict, f)
     return p_dict
 
 
@@ -110,7 +102,7 @@ def convert_single_example_to_feature(example, tokenizer, tag_to_idx, pos_to_idx
     poss_id = [pos_to_idx[p] for p in example.poss]
     len_char_sequence = 50
     token_id = []
-    pad_vec = [261 for i in range(len_char_sequence)]  # idx designed as 'pad' fpor this vocabulary
+    pad_vec = [261 for i in range(len_char_sequence)]  # idx designed as 'pad' for this vocabulary
     char_ids = []
     max_length = 512
 
