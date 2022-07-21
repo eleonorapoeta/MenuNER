@@ -11,7 +11,7 @@ class Embedders(nn.Module):
         from model import CharCNN
 
         params = {
-            'out_channel': 30,  # Set by us
+            'out_channel': 32,  # Set by us
             'kernel': [3, 9],
         }
 
