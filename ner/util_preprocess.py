@@ -128,7 +128,7 @@ def convert_single_example_to_feature(example, tokenizer, tag_to_idx, pos_to_idx
 def convert_examples_to_feature(examples):
     input_feats = []
     tag_to_idx = {"PAD": 0, "MENU": 1, "O": 2}
-    pos2ix_path = '../data/pos2idx.json'
+    pos2ix_path = '/content/pos2ix.json'
     pos_to_idx = pos2ix(examples, pos2ix_path)
     tokenizer = BertTokenizer.from_pretrained("bert-base-cased")
     for (ex_index, example) in enumerate(tqdm(examples)):
